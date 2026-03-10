@@ -46,8 +46,10 @@ export async function getById(id: number): Promise<ApiKey> {
  * @param customKey - Optional custom key value
  * @param ipWhitelist - Optional IP whitelist
  * @param ipBlacklist - Optional IP blacklist
+ * @param concurrency - Optional key-level concurrency
  * @param quota - Optional quota limit in USD (0 = unlimited)
  * @param expiresInDays - Optional days until expiry (undefined = never expires)
+ * @param expiryStartsOnFirstUse - Optional flag: expiry countdown starts on first use
  * @param rateLimitData - Optional rate limit fields
  * @returns Created API key
  */
@@ -57,8 +59,10 @@ export async function create(
   customKey?: string,
   ipWhitelist?: string[],
   ipBlacklist?: string[],
+  concurrency?: number,
   quota?: number,
   expiresInDays?: number,
+  expiryStartsOnFirstUse?: boolean,
   rateLimitData?: { rate_limit_5h?: number; rate_limit_1d?: number; rate_limit_7d?: number }
 ): Promise<ApiKey> {
   const payload: CreateApiKeyRequest = { name }
@@ -74,11 +78,17 @@ export async function create(
   if (ipBlacklist && ipBlacklist.length > 0) {
     payload.ip_blacklist = ipBlacklist
   }
+  if (concurrency !== undefined && concurrency > 0) {
+    payload.concurrency = concurrency
+  }
   if (quota !== undefined && quota > 0) {
     payload.quota = quota
   }
   if (expiresInDays !== undefined && expiresInDays > 0) {
     payload.expires_in_days = expiresInDays
+  }
+  if (expiryStartsOnFirstUse !== undefined) {
+    payload.expiry_starts_on_first_use = expiryStartsOnFirstUse
   }
   if (rateLimitData?.rate_limit_5h && rateLimitData.rate_limit_5h > 0) {
     payload.rate_limit_5h = rateLimitData.rate_limit_5h

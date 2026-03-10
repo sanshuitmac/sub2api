@@ -1032,6 +1032,9 @@ func (r *stubAPIKeyRepoForHandler) IncrementQuotaUsed(_ context.Context, _ int64
 func (r *stubAPIKeyRepoForHandler) UpdateLastUsed(context.Context, int64, time.Time) error {
 	return nil
 }
+func (r *stubAPIKeyRepoForHandler) ActivateExpiryOnFirstUse(context.Context, int64, time.Time, time.Time) (bool, error) {
+	return false, nil
+}
 func (r *stubAPIKeyRepoForHandler) IncrementRateLimitUsage(context.Context, int64, float64) error {
 	return nil
 }

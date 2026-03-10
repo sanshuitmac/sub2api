@@ -588,6 +588,10 @@ func (r *stubApiKeyRepo) UpdateLastUsed(ctx context.Context, id int64, usedAt ti
 	return nil
 }
 
+func (r *stubApiKeyRepo) ActivateExpiryOnFirstUse(ctx context.Context, id int64, newExpiresAt, usedAt time.Time) (bool, error) {
+	return true, nil
+}
+
 func (r *stubApiKeyRepo) IncrementRateLimitUsage(ctx context.Context, id int64, cost float64) error {
 	return nil
 }

@@ -133,6 +133,9 @@ func (s *apiKeyRepoStub) UpdateLastUsed(ctx context.Context, id int64, usedAt ti
 	}
 	return nil
 }
+func (s *apiKeyRepoStub) ActivateExpiryOnFirstUse(ctx context.Context, id int64, newExpiresAt, usedAt time.Time) (bool, error) {
+	panic("unexpected ActivateExpiryOnFirstUse call")
+}
 
 func (s *apiKeyRepoStub) IncrementRateLimitUsage(ctx context.Context, id int64, cost float64) error {
 	panic("unexpected IncrementRateLimitUsage call")

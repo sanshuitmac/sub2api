@@ -865,7 +865,7 @@
                     <input
                       v-model.number="item.validity_days"
                       type="number"
-                      min="1"
+                      min="-1"
                       max="36500"
                       class="input h-[42px]"
                     />
@@ -1841,7 +1841,11 @@ async function loadSettings() {
     Object.assign(form, settings)
     form.default_subscriptions = Array.isArray(settings.default_subscriptions)
       ? settings.default_subscriptions
-          .filter((item) => item.group_id > 0 && item.validity_days > 0)
+          .filter(
+            (item) =>
+              item.group_id > 0 &&
+              (item.validity_days === -1 || item.validity_days > 0)
+          )
           .map((item) => ({
             group_id: item.group_id,
             validity_days: item.validity_days
@@ -1894,10 +1898,15 @@ async function saveSettings() {
   saving.value = true
   try {
     const normalizedDefaultSubscriptions = form.default_subscriptions
-      .filter((item) => item.group_id > 0 && item.validity_days > 0)
+      .filter(
+        (item) => item.group_id > 0 && (item.validity_days === -1 || item.validity_days > 0)
+      )
       .map((item: DefaultSubscriptionSetting) => ({
         group_id: item.group_id,
-        validity_days: Math.min(36500, Math.max(1, Math.floor(item.validity_days)))
+        validity_days:
+          Math.floor(item.validity_days) === -1
+            ? -1
+            : Math.min(36500, Math.max(1, Math.floor(item.validity_days)))
       }))
 
     const seenGroupIDs = new Set<number>()

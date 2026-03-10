@@ -743,7 +743,14 @@ func normalizeDefaultSubscriptions(input []dto.DefaultSubscriptionSetting) []dto
 	}
 	normalized := make([]dto.DefaultSubscriptionSetting, 0, len(input))
 	for _, item := range input {
-		if item.GroupID <= 0 || item.ValidityDays <= 0 {
+		if item.GroupID <= 0 {
+			continue
+		}
+		if item.ValidityDays == service.PermanentValidityDays {
+			normalized = append(normalized, item)
+			continue
+		}
+		if item.ValidityDays <= 0 {
 			continue
 		}
 		if item.ValidityDays > service.MaxValidityDays {

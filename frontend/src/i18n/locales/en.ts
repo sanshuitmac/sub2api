@@ -637,6 +637,8 @@ export default {
       geminiCliDesc: 'Import as Gemini CLI configuration',
     },
     // Quota and expiration
+    concurrencyLimit: 'Key Concurrency Limit',
+    concurrencyLimitHint: 'Maximum concurrent requests allowed for this key (min 1).',
     quotaLimit: 'Quota Limit',
     quotaAmount: 'Quota Amount (USD)',
     quotaAmountPlaceholder: 'Enter quota limit in USD',
@@ -666,6 +668,10 @@ export default {
     expiresInDays: '{days} days',
     extendDays: '+{days} days',
     customDate: 'Custom',
+    expiryStartsOnFirstUse: 'Start expiry on first use',
+    expiryStartsOnFirstUseHint: 'When enabled, expiration countdown starts from the first request of this key.',
+    expiresAfterFirstUse: 'Expires {days} days after first use',
+    firstUseExpiryPending: 'Expiry starts on first use',
     expirationDate: 'Expiration Date',
     expirationDateHint: 'Select when this API key should expire.',
     currentExpiration: 'Current expiration',
@@ -1533,6 +1539,8 @@ export default {
       daysRemaining: 'days remaining',
       remainingDays: 'Remaining days',
       noExpiration: 'No expiration',
+      permanent: 'Permanent',
+      permanentValidity: 'Set as permanent validity',
       status: {
         active: 'Active',
         expired: 'Expired',
@@ -1578,7 +1586,7 @@ export default {
       adjustOutOfRange: 'Adjustment days must be between -36500 and 36500',
       pleaseSelectUser: 'Please select a user',
       pleaseSelectGroup: 'Please select a group',
-      validityDaysRequired: 'Please enter a valid number of days (at least 1)',
+      validityDaysRequired: 'Please enter a valid number of days (at least 1), or enable permanent validity',
       revokeConfirm:
         "Are you sure you want to revoke the subscription for '{user}'? This action cannot be undone."
     },

@@ -14,11 +14,15 @@ type APIKeyAuthSnapshot struct {
 	Group       *APIKeyAuthGroupSnapshot `json:"group,omitempty"`
 
 	// Quota fields for API Key independent quota feature
-	Quota     float64 `json:"quota"`      // Quota limit in USD (0 = unlimited)
-	QuotaUsed float64 `json:"quota_used"` // Used quota amount
+	Concurrency int     `json:"concurrency"` // Key-level concurrency
+	Quota       float64 `json:"quota"`       // Quota limit in USD (0 = unlimited)
+	QuotaUsed   float64 `json:"quota_used"`  // Used quota amount
 
 	// Expiration field for API Key expiration feature
-	ExpiresAt *time.Time `json:"expires_at,omitempty"` // Expiration time (nil = never expires)
+	ExpiresAt               *time.Time `json:"expires_at,omitempty"` // Expiration time (nil = never expires)
+	ExpiryStartsOnFirstUse  bool       `json:"expiry_starts_on_first_use"`
+	CreatedAt               time.Time  `json:"created_at"`
+	LastUsedAt              *time.Time `json:"last_used_at,omitempty"`
 
 	// Rate limit configuration (only limits, not usage - usage read from Redis at check time)
 	RateLimit5h float64 `json:"rate_limit_5h"`

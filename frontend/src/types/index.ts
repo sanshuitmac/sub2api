@@ -426,9 +426,11 @@ export interface ApiKey {
   ip_whitelist: string[]
   ip_blacklist: string[]
   last_used_at: string | null
+  concurrency: number
   quota: number // Quota limit in USD (0 = unlimited)
   quota_used: number // Used quota amount in USD
   expires_at: string | null // Expiration time (null = never expires)
+  expiry_starts_on_first_use: boolean
   created_at: string
   updated_at: string
   group?: Group
@@ -452,8 +454,10 @@ export interface CreateApiKeyRequest {
   custom_key?: string // Optional custom API Key
   ip_whitelist?: string[]
   ip_blacklist?: string[]
+  concurrency?: number
   quota?: number // Quota limit in USD (0 = unlimited)
   expires_in_days?: number // Days until expiry (null = never expires)
+  expiry_starts_on_first_use?: boolean
   rate_limit_5h?: number
   rate_limit_1d?: number
   rate_limit_7d?: number
@@ -465,8 +469,10 @@ export interface UpdateApiKeyRequest {
   status?: 'active' | 'inactive'
   ip_whitelist?: string[]
   ip_blacklist?: string[]
+  concurrency?: number
   quota?: number // Quota limit in USD (null = no change, 0 = unlimited)
   expires_at?: string | null // Expiration time (null = no change)
+  expiry_starts_on_first_use?: boolean
   reset_quota?: boolean // Reset quota_used to 0
   rate_limit_5h?: number
   rate_limit_1d?: number
@@ -1197,6 +1203,7 @@ export interface UserSubscription {
   id: number
   user_id: number
   group_id: number
+  is_permanent?: boolean
   status: 'active' | 'expired' | 'revoked'
   daily_usage_usd: number
   weekly_usage_usd: number

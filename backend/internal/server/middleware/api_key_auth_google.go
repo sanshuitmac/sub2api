@@ -42,6 +42,9 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			return
 		}
 
+		// 首次使用时激活有效期（失败不阻断请求）。
+		_ = apiKeyService.ActivateExpiryOnFirstUse(c.Request.Context(), apiKey)
+
 		if !apiKey.IsActive() {
 			abortWithGoogleError(c, 401, "API key is disabled")
 			return

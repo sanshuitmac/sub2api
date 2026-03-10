@@ -34,6 +34,10 @@ func (r *apiKeyRepository) activeQuery() *dbent.APIKeyQuery {
 }
 
 func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) error {
+	concurrency := key.Concurrency
+	if concurrency <= 0 {
+		concurrency = 1
+	}
 	builder := r.client.APIKey.Create().
 		SetUserID(key.UserID).
 		SetKey(key.Key).
@@ -41,9 +45,11 @@ func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) erro
 		SetStatus(key.Status).
 		SetNillableGroupID(key.GroupID).
 		SetNillableLastUsedAt(key.LastUsedAt).
+		SetConcurrency(concurrency).
 		SetQuota(key.Quota).
 		SetQuotaUsed(key.QuotaUsed).
 		SetNillableExpiresAt(key.ExpiresAt).
+		SetExpiryStartsOnFirstUse(key.ExpiryStartsOnFirstUse).
 		SetRateLimit5h(key.RateLimit5h).
 		SetRateLimit1d(key.RateLimit1d).
 		SetRateLimit7d(key.RateLimit7d)
@@ -124,9 +130,13 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 			apikey.FieldStatus,
 			apikey.FieldIPWhitelist,
 			apikey.FieldIPBlacklist,
+			apikey.FieldLastUsedAt,
+			apikey.FieldCreatedAt,
+			apikey.FieldConcurrency,
 			apikey.FieldQuota,
 			apikey.FieldQuotaUsed,
 			apikey.FieldExpiresAt,
+			apikey.FieldExpiryStartsOnFirstUse,
 			apikey.FieldRateLimit5h,
 			apikey.FieldRateLimit1d,
 			apikey.FieldRateLimit7d,
@@ -187,10 +197,16 @@ func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey) erro
 	// 同时显式设置 updated_at，避免二次查询带来的并发可见性问题。
 	client := clientFromContext(ctx, r.client)
 	now := time.Now()
+	concurrency := key.Concurrency
+	if concurrency <= 0 {
+		concurrency = 1
+	}
 	builder := client.APIKey.Update().
 		Where(apikey.IDEQ(key.ID), apikey.DeletedAtIsNil()).
 		SetName(key.Name).
 		SetStatus(key.Status).
+		SetConcurrency(concurrency).
+		SetExpiryStartsOnFirstUse(key.ExpiryStartsOnFirstUse).
 		SetQuota(key.Quota).
 		SetQuotaUsed(key.QuotaUsed).
 		SetRateLimit5h(key.RateLimit5h).
@@ -467,6 +483,26 @@ func (r *apiKeyRepository) UpdateLastUsed(ctx context.Context, id int64, usedAt 
 	return nil
 }
 
+func (r *apiKeyRepository) ActivateExpiryOnFirstUse(ctx context.Context, id int64, newExpiresAt, usedAt time.Time) (bool, error) {
+	result, err := r.sql.ExecContext(ctx, `
+		UPDATE api_keys
+		SET expires_at = $1,
+		    last_used_at = $2,
+		    updated_at = $2
+		WHERE id = $3
+		  AND deleted_at IS NULL
+		  AND last_used_at IS NULL
+	`, newExpiresAt, usedAt, id)
+	if err != nil {
+		return false, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return rows > 0, nil
+}
+
 // IncrementRateLimitUsage atomically increments all rate limit usage counters and initializes
 // window start times via COALESCE if not already set.
 func (r *apiKeyRepository) IncrementRateLimitUsage(ctx context.Context, id int64, cost float64) error {
@@ -541,9 +577,11 @@ func apiKeyEntityToService(m *dbent.APIKey) *service.APIKey {
 		CreatedAt:     m.CreatedAt,
 		UpdatedAt:     m.UpdatedAt,
 		GroupID:       m.GroupID,
+		Concurrency:   m.Concurrency,
 		Quota:         m.Quota,
 		QuotaUsed:     m.QuotaUsed,
 		ExpiresAt:     m.ExpiresAt,
+		ExpiryStartsOnFirstUse: m.ExpiryStartsOnFirstUse,
 		RateLimit5h:   m.RateLimit5h,
 		RateLimit1d:   m.RateLimit1d,
 		RateLimit7d:   m.RateLimit7d,

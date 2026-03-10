@@ -72,51 +72,54 @@ const (
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
 type APIKeyMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *int64
-	created_at         *time.Time
-	updated_at         *time.Time
-	deleted_at         *time.Time
-	key                *string
-	name               *string
-	status             *string
-	last_used_at       *time.Time
-	ip_whitelist       *[]string
-	appendip_whitelist []string
-	ip_blacklist       *[]string
-	appendip_blacklist []string
-	quota              *float64
-	addquota           *float64
-	quota_used         *float64
-	addquota_used      *float64
-	expires_at         *time.Time
-	rate_limit_5h      *float64
-	addrate_limit_5h   *float64
-	rate_limit_1d      *float64
-	addrate_limit_1d   *float64
-	rate_limit_7d      *float64
-	addrate_limit_7d   *float64
-	usage_5h           *float64
-	addusage_5h        *float64
-	usage_1d           *float64
-	addusage_1d        *float64
-	usage_7d           *float64
-	addusage_7d        *float64
-	window_5h_start    *time.Time
-	window_1d_start    *time.Time
-	window_7d_start    *time.Time
-	clearedFields      map[string]struct{}
-	user               *int64
-	cleareduser        bool
-	group              *int64
-	clearedgroup       bool
-	usage_logs         map[int64]struct{}
-	removedusage_logs  map[int64]struct{}
-	clearedusage_logs  bool
-	done               bool
-	oldValue           func(context.Context) (*APIKey, error)
-	predicates         []predicate.APIKey
+	op                         Op
+	typ                        string
+	id                         *int64
+	created_at                 *time.Time
+	updated_at                 *time.Time
+	deleted_at                 *time.Time
+	key                        *string
+	name                       *string
+	status                     *string
+	last_used_at               *time.Time
+	ip_whitelist               *[]string
+	appendip_whitelist         []string
+	ip_blacklist               *[]string
+	appendip_blacklist         []string
+	concurrency                *int
+	addconcurrency             *int
+	quota                      *float64
+	addquota                   *float64
+	quota_used                 *float64
+	addquota_used              *float64
+	expires_at                 *time.Time
+	expiry_starts_on_first_use *bool
+	rate_limit_5h              *float64
+	addrate_limit_5h           *float64
+	rate_limit_1d              *float64
+	addrate_limit_1d           *float64
+	rate_limit_7d              *float64
+	addrate_limit_7d           *float64
+	usage_5h                   *float64
+	addusage_5h                *float64
+	usage_1d                   *float64
+	addusage_1d                *float64
+	usage_7d                   *float64
+	addusage_7d                *float64
+	window_5h_start            *time.Time
+	window_1d_start            *time.Time
+	window_7d_start            *time.Time
+	clearedFields              map[string]struct{}
+	user                       *int64
+	cleareduser                bool
+	group                      *int64
+	clearedgroup               bool
+	usage_logs                 map[int64]struct{}
+	removedusage_logs          map[int64]struct{}
+	clearedusage_logs          bool
+	done                       bool
+	oldValue                   func(context.Context) (*APIKey, error)
+	predicates                 []predicate.APIKey
 }
 
 var _ ent.Mutation = (*APIKeyMutation)(nil)
@@ -710,6 +713,62 @@ func (m *APIKeyMutation) ResetIPBlacklist() {
 	delete(m.clearedFields, apikey.FieldIPBlacklist)
 }
 
+// SetConcurrency sets the "concurrency" field.
+func (m *APIKeyMutation) SetConcurrency(i int) {
+	m.concurrency = &i
+	m.addconcurrency = nil
+}
+
+// Concurrency returns the value of the "concurrency" field in the mutation.
+func (m *APIKeyMutation) Concurrency() (r int, exists bool) {
+	v := m.concurrency
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConcurrency returns the old "concurrency" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldConcurrency(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConcurrency is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConcurrency requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConcurrency: %w", err)
+	}
+	return oldValue.Concurrency, nil
+}
+
+// AddConcurrency adds i to the "concurrency" field.
+func (m *APIKeyMutation) AddConcurrency(i int) {
+	if m.addconcurrency != nil {
+		*m.addconcurrency += i
+	} else {
+		m.addconcurrency = &i
+	}
+}
+
+// AddedConcurrency returns the value that was added to the "concurrency" field in this mutation.
+func (m *APIKeyMutation) AddedConcurrency() (r int, exists bool) {
+	v := m.addconcurrency
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetConcurrency resets all changes to the "concurrency" field.
+func (m *APIKeyMutation) ResetConcurrency() {
+	m.concurrency = nil
+	m.addconcurrency = nil
+}
+
 // SetQuota sets the "quota" field.
 func (m *APIKeyMutation) SetQuota(f float64) {
 	m.quota = &f
@@ -869,6 +928,42 @@ func (m *APIKeyMutation) ExpiresAtCleared() bool {
 func (m *APIKeyMutation) ResetExpiresAt() {
 	m.expires_at = nil
 	delete(m.clearedFields, apikey.FieldExpiresAt)
+}
+
+// SetExpiryStartsOnFirstUse sets the "expiry_starts_on_first_use" field.
+func (m *APIKeyMutation) SetExpiryStartsOnFirstUse(b bool) {
+	m.expiry_starts_on_first_use = &b
+}
+
+// ExpiryStartsOnFirstUse returns the value of the "expiry_starts_on_first_use" field in the mutation.
+func (m *APIKeyMutation) ExpiryStartsOnFirstUse() (r bool, exists bool) {
+	v := m.expiry_starts_on_first_use
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiryStartsOnFirstUse returns the old "expiry_starts_on_first_use" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldExpiryStartsOnFirstUse(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiryStartsOnFirstUse is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiryStartsOnFirstUse requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiryStartsOnFirstUse: %w", err)
+	}
+	return oldValue.ExpiryStartsOnFirstUse, nil
+}
+
+// ResetExpiryStartsOnFirstUse resets all changes to the "expiry_starts_on_first_use" field.
+func (m *APIKeyMutation) ResetExpiryStartsOnFirstUse() {
+	m.expiry_starts_on_first_use = nil
 }
 
 // SetRateLimit5h sets the "rate_limit_5h" field.
@@ -1496,7 +1591,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 25)
 	if m.created_at != nil {
 		fields = append(fields, apikey.FieldCreatedAt)
 	}
@@ -1530,6 +1625,9 @@ func (m *APIKeyMutation) Fields() []string {
 	if m.ip_blacklist != nil {
 		fields = append(fields, apikey.FieldIPBlacklist)
 	}
+	if m.concurrency != nil {
+		fields = append(fields, apikey.FieldConcurrency)
+	}
 	if m.quota != nil {
 		fields = append(fields, apikey.FieldQuota)
 	}
@@ -1538,6 +1636,9 @@ func (m *APIKeyMutation) Fields() []string {
 	}
 	if m.expires_at != nil {
 		fields = append(fields, apikey.FieldExpiresAt)
+	}
+	if m.expiry_starts_on_first_use != nil {
+		fields = append(fields, apikey.FieldExpiryStartsOnFirstUse)
 	}
 	if m.rate_limit_5h != nil {
 		fields = append(fields, apikey.FieldRateLimit5h)
@@ -1596,12 +1697,16 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.IPWhitelist()
 	case apikey.FieldIPBlacklist:
 		return m.IPBlacklist()
+	case apikey.FieldConcurrency:
+		return m.Concurrency()
 	case apikey.FieldQuota:
 		return m.Quota()
 	case apikey.FieldQuotaUsed:
 		return m.QuotaUsed()
 	case apikey.FieldExpiresAt:
 		return m.ExpiresAt()
+	case apikey.FieldExpiryStartsOnFirstUse:
+		return m.ExpiryStartsOnFirstUse()
 	case apikey.FieldRateLimit5h:
 		return m.RateLimit5h()
 	case apikey.FieldRateLimit1d:
@@ -1651,12 +1756,16 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldIPWhitelist(ctx)
 	case apikey.FieldIPBlacklist:
 		return m.OldIPBlacklist(ctx)
+	case apikey.FieldConcurrency:
+		return m.OldConcurrency(ctx)
 	case apikey.FieldQuota:
 		return m.OldQuota(ctx)
 	case apikey.FieldQuotaUsed:
 		return m.OldQuotaUsed(ctx)
 	case apikey.FieldExpiresAt:
 		return m.OldExpiresAt(ctx)
+	case apikey.FieldExpiryStartsOnFirstUse:
+		return m.OldExpiryStartsOnFirstUse(ctx)
 	case apikey.FieldRateLimit5h:
 		return m.OldRateLimit5h(ctx)
 	case apikey.FieldRateLimit1d:
@@ -1761,6 +1870,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetIPBlacklist(v)
 		return nil
+	case apikey.FieldConcurrency:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConcurrency(v)
+		return nil
 	case apikey.FieldQuota:
 		v, ok := value.(float64)
 		if !ok {
@@ -1781,6 +1897,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetExpiresAt(v)
+		return nil
+	case apikey.FieldExpiryStartsOnFirstUse:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiryStartsOnFirstUse(v)
 		return nil
 	case apikey.FieldRateLimit5h:
 		v, ok := value.(float64)
@@ -1853,6 +1976,9 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *APIKeyMutation) AddedFields() []string {
 	var fields []string
+	if m.addconcurrency != nil {
+		fields = append(fields, apikey.FieldConcurrency)
+	}
 	if m.addquota != nil {
 		fields = append(fields, apikey.FieldQuota)
 	}
@@ -1885,6 +2011,8 @@ func (m *APIKeyMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *APIKeyMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case apikey.FieldConcurrency:
+		return m.AddedConcurrency()
 	case apikey.FieldQuota:
 		return m.AddedQuota()
 	case apikey.FieldQuotaUsed:
@@ -1910,6 +2038,13 @@ func (m *APIKeyMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *APIKeyMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case apikey.FieldConcurrency:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddConcurrency(v)
+		return nil
 	case apikey.FieldQuota:
 		v, ok := value.(float64)
 		if !ok {
@@ -2083,6 +2218,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 	case apikey.FieldIPBlacklist:
 		m.ResetIPBlacklist()
 		return nil
+	case apikey.FieldConcurrency:
+		m.ResetConcurrency()
+		return nil
 	case apikey.FieldQuota:
 		m.ResetQuota()
 		return nil
@@ -2091,6 +2229,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 		return nil
 	case apikey.FieldExpiresAt:
 		m.ResetExpiresAt()
+		return nil
+	case apikey.FieldExpiryStartsOnFirstUse:
+		m.ResetExpiryStartsOnFirstUse()
 		return nil
 	case apikey.FieldRateLimit5h:
 		m.ResetRateLimit5h()

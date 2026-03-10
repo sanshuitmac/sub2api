@@ -188,10 +188,11 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 
 	// For Gemini native API, do not send Claude-style ping frames.
 	geminiConcurrency := NewConcurrencyHelper(h.concurrencyHelper.concurrencyService, SSEPingFormatNone, 0)
+	keyConcurrency := apiKey.EffectiveConcurrency()
 
 	// 0) wait queue check
-	maxWait := service.CalculateMaxWait(authSubject.Concurrency)
-	canWait, err := geminiConcurrency.IncrementWaitCount(c.Request.Context(), authSubject.UserID, maxWait)
+	maxWait := service.CalculateMaxWait(keyConcurrency)
+	canWait, err := geminiConcurrency.IncrementWaitCount(c.Request.Context(), apiKey.ID, maxWait)
 	waitCounted := false
 	if err != nil {
 		reqLog.Warn("gemini.user_wait_counter_increment_failed", zap.Error(err))
@@ -205,7 +206,7 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 	}
 	defer func() {
 		if waitCounted {
-			geminiConcurrency.DecrementWaitCount(c.Request.Context(), authSubject.UserID)
+			geminiConcurrency.DecrementWaitCount(c.Request.Context(), apiKey.ID)
 		}
 	}()
 
@@ -214,14 +215,14 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 	if h.errorPassthroughService != nil {
 		service.BindErrorPassthroughService(c, h.errorPassthroughService)
 	}
-	userReleaseFunc, err := geminiConcurrency.AcquireUserSlotWithWait(c, authSubject.UserID, authSubject.Concurrency, stream, &streamStarted)
+	userReleaseFunc, err := geminiConcurrency.AcquireUserSlotWithWait(c, apiKey.ID, keyConcurrency, stream, &streamStarted)
 	if err != nil {
 		reqLog.Warn("gemini.user_slot_acquire_failed", zap.Error(err))
 		googleError(c, http.StatusTooManyRequests, err.Error())
 		return
 	}
 	if waitCounted {
-		geminiConcurrency.DecrementWaitCount(c.Request.Context(), authSubject.UserID)
+		geminiConcurrency.DecrementWaitCount(c.Request.Context(), apiKey.ID)
 		waitCounted = false
 	}
 	// 确保请求取消时也会释放槽位，避免长连接被动中断造成泄漏

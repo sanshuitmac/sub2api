@@ -76,6 +76,10 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			return
 		}
 
+		// 首次使用时激活有效期：将过期时间从“创建时起算”改为“首次使用起算”。
+		// 该操作为幂等更新，失败时不阻断主请求链路。
+		_ = apiKeyService.ActivateExpiryOnFirstUse(c.Request.Context(), apiKey)
+
 		// ── 3. 基础鉴权（始终执行） ─────────────────────────────────
 
 		// disabled / 未知状态 → 无条件拦截（expired 和 quota_exhausted 留给计费阶段）

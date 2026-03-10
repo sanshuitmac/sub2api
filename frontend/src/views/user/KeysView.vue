@@ -119,6 +119,12 @@
             </div>
           </template>
 
+          <template #cell-concurrency="{ row }">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ row.concurrency }}
+            </span>
+          </template>
+
           <template #cell-usage="{ row }">
             <div class="text-sm">
               <div class="flex items-center gap-1.5">
@@ -261,13 +267,24 @@
             <span v-else class="text-sm text-gray-400 dark:text-dark-500">-</span>
           </template>
 
-          <template #cell-expires_at="{ value }">
-            <span v-if="value" :class="[
-              'text-sm',
-              new Date(value) < new Date() ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-dark-400'
-            ]">
-              {{ formatDateTime(value) }}
-            </span>
+          <template #cell-expires_at="{ value, row }">
+            <div v-if="value" class="space-y-1">
+              <span
+                v-if="row.expiry_starts_on_first_use && !row.last_used_at"
+                class="text-sm text-blue-600 dark:text-blue-400"
+              >
+                {{ firstUseExpiryLabel(row) }}
+              </span>
+              <span
+                v-else
+                :class="[
+                  'text-sm',
+                  new Date(value) < new Date() ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-dark-400'
+                ]"
+              >
+                {{ formatDateTime(value) }}
+              </span>
+            </div>
             <span v-else class="text-sm text-gray-400 dark:text-dark-500">{{ t('keys.noExpiration') }}</span>
           </template>
 
@@ -510,6 +527,19 @@
               <p class="input-hint">{{ t('keys.ipBlacklistHint') }}</p>
             </div>
           </div>
+        </div>
+
+        <!-- Key Concurrency Section -->
+        <div>
+          <label class="input-label">{{ t('keys.concurrencyLimit') }}</label>
+          <input
+            v-model.number="formData.concurrency"
+            type="number"
+            min="1"
+            class="input"
+            @input="formData.concurrency = Math.max(1, Math.floor(formData.concurrency || 1))"
+          />
+          <p class="input-hint">{{ t('keys.concurrencyLimitHint') }}</p>
         </div>
 
         <!-- Quota Limit Section -->
@@ -774,6 +804,32 @@
           </div>
 
           <div v-if="formData.enable_expiration" class="space-y-4 pt-2">
+            <div class="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-dark-600">
+              <div>
+                <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
+                  {{ t('keys.expiryStartsOnFirstUse') }}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('keys.expiryStartsOnFirstUseHint') }}
+                </p>
+              </div>
+              <button
+                type="button"
+                @click="formData.expiry_starts_on_first_use = !formData.expiry_starts_on_first_use"
+                :class="[
+                  'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                  formData.expiry_starts_on_first_use ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+                ]"
+              >
+                <span
+                  :class="[
+                    'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                    formData.expiry_starts_on_first_use ? 'translate-x-4' : 'translate-x-0'
+                  ]"
+                />
+              </button>
+            </div>
+
             <!-- Quick select buttons (for both create and edit mode) -->
             <div class="flex flex-wrap gap-2">
               <button
@@ -819,7 +875,11 @@
             <div v-if="showEditModal && selectedKey?.expires_at" class="text-sm">
               <span class="text-gray-500 dark:text-gray-400">{{ t('keys.currentExpiration') }}: </span>
               <span class="font-medium text-gray-900 dark:text-white">
-                {{ formatDateTime(selectedKey.expires_at) }}
+                {{
+                  selectedKey.expiry_starts_on_first_use && !selectedKey.last_used_at
+                    ? firstUseExpiryLabel(selectedKey)
+                    : formatDateTime(selectedKey.expires_at)
+                }}
               </span>
             </div>
           </div>
@@ -1081,6 +1141,7 @@ const columns = computed<Column[]>(() => [
   { key: 'name', label: t('common.name'), sortable: true },
   { key: 'key', label: t('keys.apiKey'), sortable: false },
   { key: 'group', label: t('keys.group'), sortable: false },
+  { key: 'concurrency', label: t('keys.concurrencyLimit'), sortable: true },
   { key: 'usage', label: t('keys.usage'), sortable: false },
   { key: 'rate_limit', label: t('keys.rateLimitColumn'), sortable: false },
   { key: 'expires_at', label: t('keys.expiresAt'), sortable: true },
@@ -1146,6 +1207,7 @@ const formData = ref({
   name: '',
   group_id: null as number | null,
   status: 'active' as 'active' | 'inactive',
+  concurrency: 1,
   use_custom_key: false,
   custom_key: '',
   enable_ip_restriction: false,
@@ -1160,6 +1222,7 @@ const formData = ref({
   rate_limit_1d: null as number | null,
   rate_limit_7d: null as number | null,
   enable_expiration: false,
+  expiry_starts_on_first_use: true,
   expiration_preset: '30' as '7' | '30' | '90' | 'custom',
   expiration_date: ''
 })
@@ -1242,6 +1305,16 @@ const filteredGroupOptions = computed(() => {
 const maskKey = (key: string): string => {
   if (key.length <= 12) return key
   return `${key.slice(0, 8)}...${key.slice(-4)}`
+}
+
+const firstUseExpiryLabel = (key: ApiKey): string => {
+  if (!key.expires_at) return t('keys.firstUseExpiryPending')
+  const createdAt = new Date(key.created_at).getTime()
+  const expiresAt = new Date(key.expires_at).getTime()
+  const diffMs = expiresAt - createdAt
+  if (!Number.isFinite(diffMs) || diffMs <= 0) return t('keys.firstUseExpiryPending')
+  const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+  return t('keys.expiresAfterFirstUse', { days })
 }
 
 const copyToClipboard = async (text: string, keyId: number) => {
@@ -1359,6 +1432,7 @@ const editKey = (key: ApiKey) => {
     name: key.name,
     group_id: key.group_id,
     status: key.status === 'quota_exhausted' || key.status === 'expired' ? 'inactive' : key.status,
+    concurrency: key.concurrency > 0 ? key.concurrency : 1,
     use_custom_key: false,
     custom_key: '',
     enable_ip_restriction: hasIPRestriction,
@@ -1371,6 +1445,7 @@ const editKey = (key: ApiKey) => {
     rate_limit_1d: key.rate_limit_1d || null,
     rate_limit_7d: key.rate_limit_7d || null,
     enable_expiration: hasExpiration,
+    expiry_starts_on_first_use: !!key.expiry_starts_on_first_use,
     expiration_preset: 'custom',
     expiration_date: key.expires_at ? formatDateTimeLocal(key.expires_at) : ''
   }
@@ -1476,6 +1551,10 @@ const handleSubmit = async () => {
 
   // Calculate quota value (null/empty/0 = unlimited, stored as 0)
   const quota = formData.value.quota && formData.value.quota > 0 ? formData.value.quota : 0
+  const keyConcurrency = Math.max(1, Math.floor(formData.value.concurrency || 1))
+  const expiryStartsOnFirstUse = formData.value.enable_expiration
+    ? !!formData.value.expiry_starts_on_first_use
+    : false
 
   // Calculate expiration
   let expiresInDays: number | undefined
@@ -1510,10 +1589,12 @@ const handleSubmit = async () => {
         name: formData.value.name,
         group_id: formData.value.group_id,
         status: formData.value.status,
+        concurrency: keyConcurrency,
         ip_whitelist: ipWhitelist,
         ip_blacklist: ipBlacklist,
         quota: quota,
         expires_at: expiresAt,
+        expiry_starts_on_first_use: expiryStartsOnFirstUse,
         rate_limit_5h: rateLimitData.rate_limit_5h,
         rate_limit_1d: rateLimitData.rate_limit_1d,
         rate_limit_7d: rateLimitData.rate_limit_7d,
@@ -1527,8 +1608,10 @@ const handleSubmit = async () => {
         customKey,
         ipWhitelist,
         ipBlacklist,
+        keyConcurrency,
         quota,
         expiresInDays,
+        expiryStartsOnFirstUse,
         rateLimitData
       )
       appStore.showSuccess(t('keys.keyCreatedSuccess'))
@@ -1576,6 +1659,7 @@ const closeModals = () => {
     name: '',
     group_id: null,
     status: 'active',
+    concurrency: 1,
     use_custom_key: false,
     custom_key: '',
     enable_ip_restriction: false,
@@ -1588,6 +1672,7 @@ const closeModals = () => {
     rate_limit_1d: null,
     rate_limit_7d: null,
     enable_expiration: false,
+    expiry_starts_on_first_use: true,
     expiration_preset: '30',
     expiration_date: ''
   }

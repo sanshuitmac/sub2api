@@ -42,12 +42,16 @@ type APIKey struct {
 	IPWhitelist []string `json:"ip_whitelist,omitempty"`
 	// Blocked IPs/CIDRs
 	IPBlacklist []string `json:"ip_blacklist,omitempty"`
+	// Concurrency limit for this API key
+	Concurrency int `json:"concurrency,omitempty"`
 	// Quota limit in USD for this API key (0 = unlimited)
 	Quota float64 `json:"quota,omitempty"`
 	// Used quota amount in USD
 	QuotaUsed float64 `json:"quota_used,omitempty"`
 	// Expiration time for this API key (null = never expires)
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+	// Whether expiration starts on first use
+	ExpiryStartsOnFirstUse bool `json:"expiry_starts_on_first_use,omitempty"`
 	// Rate limit in USD per 5 hours (0 = unlimited)
 	RateLimit5h float64 `json:"rate_limit_5h,omitempty"`
 	// Rate limit in USD per day (0 = unlimited)
@@ -123,9 +127,11 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case apikey.FieldIPWhitelist, apikey.FieldIPBlacklist:
 			values[i] = new([]byte)
+		case apikey.FieldExpiryStartsOnFirstUse:
+			values[i] = new(sql.NullBool)
 		case apikey.FieldQuota, apikey.FieldQuotaUsed, apikey.FieldRateLimit5h, apikey.FieldRateLimit1d, apikey.FieldRateLimit7d, apikey.FieldUsage5h, apikey.FieldUsage1d, apikey.FieldUsage7d:
 			values[i] = new(sql.NullFloat64)
-		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID:
+		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID, apikey.FieldConcurrency:
 			values[i] = new(sql.NullInt64)
 		case apikey.FieldKey, apikey.FieldName, apikey.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -225,6 +231,12 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field ip_blacklist: %w", err)
 				}
 			}
+		case apikey.FieldConcurrency:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field concurrency", values[i])
+			} else if value.Valid {
+				_m.Concurrency = int(value.Int64)
+			}
 		case apikey.FieldQuota:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
 				return fmt.Errorf("unexpected type %T for field quota", values[i])
@@ -243,6 +255,12 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ExpiresAt = new(time.Time)
 				*_m.ExpiresAt = value.Time
+			}
+		case apikey.FieldExpiryStartsOnFirstUse:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field expiry_starts_on_first_use", values[i])
+			} else if value.Valid {
+				_m.ExpiryStartsOnFirstUse = value.Bool
 			}
 		case apikey.FieldRateLimit5h:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -391,6 +409,9 @@ func (_m *APIKey) String() string {
 	builder.WriteString("ip_blacklist=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IPBlacklist))
 	builder.WriteString(", ")
+	builder.WriteString("concurrency=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Concurrency))
+	builder.WriteString(", ")
 	builder.WriteString("quota=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Quota))
 	builder.WriteString(", ")
@@ -401,6 +422,9 @@ func (_m *APIKey) String() string {
 		builder.WriteString("expires_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("expiry_starts_on_first_use=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ExpiryStartsOnFirstUse))
 	builder.WriteString(", ")
 	builder.WriteString("rate_limit_5h=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RateLimit5h))

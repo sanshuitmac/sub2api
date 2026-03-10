@@ -45,9 +45,11 @@ type APIKey struct {
 	Group               *Group
 
 	// Quota fields
-	Quota     float64    // Quota limit in USD (0 = unlimited)
-	QuotaUsed float64    // Used quota amount
-	ExpiresAt *time.Time // Expiration time (nil = never expires)
+	Concurrency             int        // Key-level concurrency limit
+	Quota                   float64    // Quota limit in USD (0 = unlimited)
+	QuotaUsed               float64    // Used quota amount
+	ExpiresAt               *time.Time // Expiration time (nil = never expires)
+	ExpiryStartsOnFirstUse  bool       // If true, expiry countdown starts on first use
 
 	// Rate limit fields
 	RateLimit5h   float64    // Rate limit in USD per 5h (0 = unlimited)
@@ -76,6 +78,14 @@ func (k *APIKey) IsExpired() bool {
 		return false
 	}
 	return time.Now().After(*k.ExpiresAt)
+}
+
+// EffectiveConcurrency returns a safe per-key concurrency value.
+func (k *APIKey) EffectiveConcurrency() int {
+	if k == nil || k.Concurrency <= 0 {
+		return 1
+	}
+	return k.Concurrency
 }
 
 // IsQuotaExhausted checks if the API key quota is exhausted

@@ -190,6 +190,27 @@ func (_u *APIKeyUpdate) ClearIPBlacklist() *APIKeyUpdate {
 	return _u
 }
 
+// SetConcurrency sets the "concurrency" field.
+func (_u *APIKeyUpdate) SetConcurrency(v int) *APIKeyUpdate {
+	_u.mutation.ResetConcurrency()
+	_u.mutation.SetConcurrency(v)
+	return _u
+}
+
+// SetNillableConcurrency sets the "concurrency" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableConcurrency(v *int) *APIKeyUpdate {
+	if v != nil {
+		_u.SetConcurrency(*v)
+	}
+	return _u
+}
+
+// AddConcurrency adds value to the "concurrency" field.
+func (_u *APIKeyUpdate) AddConcurrency(v int) *APIKeyUpdate {
+	_u.mutation.AddConcurrency(v)
+	return _u
+}
+
 // SetQuota sets the "quota" field.
 func (_u *APIKeyUpdate) SetQuota(v float64) *APIKeyUpdate {
 	_u.mutation.ResetQuota()
@@ -249,6 +270,20 @@ func (_u *APIKeyUpdate) SetNillableExpiresAt(v *time.Time) *APIKeyUpdate {
 // ClearExpiresAt clears the value of the "expires_at" field.
 func (_u *APIKeyUpdate) ClearExpiresAt() *APIKeyUpdate {
 	_u.mutation.ClearExpiresAt()
+	return _u
+}
+
+// SetExpiryStartsOnFirstUse sets the "expiry_starts_on_first_use" field.
+func (_u *APIKeyUpdate) SetExpiryStartsOnFirstUse(v bool) *APIKeyUpdate {
+	_u.mutation.SetExpiryStartsOnFirstUse(v)
+	return _u
+}
+
+// SetNillableExpiryStartsOnFirstUse sets the "expiry_starts_on_first_use" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableExpiryStartsOnFirstUse(v *bool) *APIKeyUpdate {
+	if v != nil {
+		_u.SetExpiryStartsOnFirstUse(*v)
+	}
 	return _u
 }
 
@@ -624,6 +659,12 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.IPBlacklistCleared() {
 		_spec.ClearField(apikey.FieldIPBlacklist, field.TypeJSON)
 	}
+	if value, ok := _u.mutation.Concurrency(); ok {
+		_spec.SetField(apikey.FieldConcurrency, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedConcurrency(); ok {
+		_spec.AddField(apikey.FieldConcurrency, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.Quota(); ok {
 		_spec.SetField(apikey.FieldQuota, field.TypeFloat64, value)
 	}
@@ -641,6 +682,9 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ExpiresAtCleared() {
 		_spec.ClearField(apikey.FieldExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ExpiryStartsOnFirstUse(); ok {
+		_spec.SetField(apikey.FieldExpiryStartsOnFirstUse, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.RateLimit5h(); ok {
 		_spec.SetField(apikey.FieldRateLimit5h, field.TypeFloat64, value)
@@ -977,6 +1021,27 @@ func (_u *APIKeyUpdateOne) ClearIPBlacklist() *APIKeyUpdateOne {
 	return _u
 }
 
+// SetConcurrency sets the "concurrency" field.
+func (_u *APIKeyUpdateOne) SetConcurrency(v int) *APIKeyUpdateOne {
+	_u.mutation.ResetConcurrency()
+	_u.mutation.SetConcurrency(v)
+	return _u
+}
+
+// SetNillableConcurrency sets the "concurrency" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableConcurrency(v *int) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetConcurrency(*v)
+	}
+	return _u
+}
+
+// AddConcurrency adds value to the "concurrency" field.
+func (_u *APIKeyUpdateOne) AddConcurrency(v int) *APIKeyUpdateOne {
+	_u.mutation.AddConcurrency(v)
+	return _u
+}
+
 // SetQuota sets the "quota" field.
 func (_u *APIKeyUpdateOne) SetQuota(v float64) *APIKeyUpdateOne {
 	_u.mutation.ResetQuota()
@@ -1036,6 +1101,20 @@ func (_u *APIKeyUpdateOne) SetNillableExpiresAt(v *time.Time) *APIKeyUpdateOne {
 // ClearExpiresAt clears the value of the "expires_at" field.
 func (_u *APIKeyUpdateOne) ClearExpiresAt() *APIKeyUpdateOne {
 	_u.mutation.ClearExpiresAt()
+	return _u
+}
+
+// SetExpiryStartsOnFirstUse sets the "expiry_starts_on_first_use" field.
+func (_u *APIKeyUpdateOne) SetExpiryStartsOnFirstUse(v bool) *APIKeyUpdateOne {
+	_u.mutation.SetExpiryStartsOnFirstUse(v)
+	return _u
+}
+
+// SetNillableExpiryStartsOnFirstUse sets the "expiry_starts_on_first_use" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableExpiryStartsOnFirstUse(v *bool) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetExpiryStartsOnFirstUse(*v)
+	}
 	return _u
 }
 
@@ -1441,6 +1520,12 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	if _u.mutation.IPBlacklistCleared() {
 		_spec.ClearField(apikey.FieldIPBlacklist, field.TypeJSON)
 	}
+	if value, ok := _u.mutation.Concurrency(); ok {
+		_spec.SetField(apikey.FieldConcurrency, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedConcurrency(); ok {
+		_spec.AddField(apikey.FieldConcurrency, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.Quota(); ok {
 		_spec.SetField(apikey.FieldQuota, field.TypeFloat64, value)
 	}
@@ -1458,6 +1543,9 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	}
 	if _u.mutation.ExpiresAtCleared() {
 		_spec.ClearField(apikey.FieldExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ExpiryStartsOnFirstUse(); ok {
+		_spec.SetField(apikey.FieldExpiryStartsOnFirstUse, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.RateLimit5h(); ok {
 		_spec.SetField(apikey.FieldRateLimit5h, field.TypeFloat64, value)

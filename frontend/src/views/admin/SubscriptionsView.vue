@@ -324,20 +324,27 @@
             </div>
           </template>
 
-          <template #cell-expires_at="{ value }">
+          <template #cell-expires_at="{ value, row }">
             <div v-if="value">
+              <div
+                v-if="row.is_permanent"
+                class="text-sm font-medium text-emerald-600 dark:text-emerald-400"
+              >
+                {{ t('admin.subscriptions.permanent') }}
+              </div>
               <span
+                v-else
                 class="text-sm"
                 :class="
-                  isExpiringSoon(value)
+                  isExpiringSoon(value, row.is_permanent)
                     ? 'text-orange-600 dark:text-orange-400'
                     : 'text-gray-700 dark:text-gray-300'
                 "
               >
                 {{ formatDateOnly(value) }}
               </span>
-              <div v-if="getDaysRemaining(value) !== null" class="text-xs text-gray-500">
-                {{ getDaysRemaining(value) }} {{ t('admin.subscriptions.daysRemaining') }}
+              <div v-if="getDaysRemaining(value, row.is_permanent) !== null" class="text-xs text-gray-500">
+                {{ getDaysRemaining(value, row.is_permanent) }} {{ t('admin.subscriptions.daysRemaining') }}
               </div>
             </div>
             <span v-else class="text-sm text-gray-500">{{
@@ -498,7 +505,24 @@
         </div>
         <div>
           <label class="input-label">{{ t('admin.subscriptions.form.validityDays') }}</label>
-          <input v-model.number="assignForm.validity_days" type="number" min="1" class="input" />
+          <div class="space-y-3">
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                v-model="assignForm.is_permanent"
+                type="checkbox"
+                class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              {{ t('admin.subscriptions.permanentValidity') }}
+            </label>
+            <input
+              v-model.number="assignForm.validity_days"
+              type="number"
+              min="1"
+              :disabled="assignForm.is_permanent"
+              class="input"
+              :class="{ 'opacity-60 cursor-not-allowed': assignForm.is_permanent }"
+            />
+          </div>
           <p class="input-hint">{{ t('admin.subscriptions.validityHint') }}</p>
         </div>
       </form>
@@ -563,16 +587,18 @@
             {{ t('admin.subscriptions.currentExpiration') }}:
             <span class="font-medium text-gray-900 dark:text-white">
               {{
-                extendingSubscription.expires_at
+                extendingSubscription.is_permanent
+                  ? t('admin.subscriptions.permanent')
+                  : extendingSubscription.expires_at
                   ? formatDateOnly(extendingSubscription.expires_at)
                   : t('admin.subscriptions.noExpiration')
               }}
             </span>
           </p>
-          <p v-if="extendingSubscription.expires_at" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <p v-if="extendingSubscription.expires_at && !extendingSubscription.is_permanent" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
             {{ t('admin.subscriptions.remainingDays') }}:
             <span class="font-medium text-gray-900 dark:text-white">
-              {{ getDaysRemaining(extendingSubscription.expires_at) ?? 0 }}
+              {{ getDaysRemaining(extendingSubscription.expires_at, extendingSubscription.is_permanent) ?? 0 }}
             </span>
           </p>
         </div>
@@ -819,6 +845,7 @@ const revokingSubscription = ref<UserSubscription | null>(null)
 const assignForm = reactive({
   user_id: null as number | null,
   group_id: null as number | null,
+  is_permanent: false,
   validity_days: 30
 })
 
@@ -1021,6 +1048,7 @@ const closeAssignModal = () => {
   showAssignModal.value = false
   assignForm.user_id = null
   assignForm.group_id = null
+  assignForm.is_permanent = false
   assignForm.validity_days = 30
   // Clear user search state
   selectedUser.value = null
@@ -1038,7 +1066,7 @@ const handleAssignSubscription = async () => {
     appStore.showError(t('admin.subscriptions.pleaseSelectGroup'))
     return
   }
-  if (!assignForm.validity_days || assignForm.validity_days < 1) {
+  if (!assignForm.is_permanent && (!assignForm.validity_days || assignForm.validity_days < 1)) {
     appStore.showError(t('admin.subscriptions.validityDaysRequired'))
     return
   }
@@ -1048,7 +1076,7 @@ const handleAssignSubscription = async () => {
     await adminAPI.subscriptions.assign({
       user_id: assignForm.user_id,
       group_id: assignForm.group_id,
-      validity_days: assignForm.validity_days
+      validity_days: assignForm.is_permanent ? -1 : assignForm.validity_days
     })
     appStore.showSuccess(t('admin.subscriptions.subscriptionAssigned'))
     closeAssignModal()
@@ -1122,7 +1150,8 @@ const confirmRevoke = async () => {
 }
 
 // Helper functions
-const getDaysRemaining = (expiresAt: string): number | null => {
+const getDaysRemaining = (expiresAt: string, isPermanent?: boolean): number | null => {
+  if (isPermanent) return null
   const now = new Date()
   const expires = new Date(expiresAt)
   const diff = expires.getTime() - now.getTime()
@@ -1130,8 +1159,8 @@ const getDaysRemaining = (expiresAt: string): number | null => {
   return Math.ceil(diff / (1000 * 60 * 60 * 24))
 }
 
-const isExpiringSoon = (expiresAt: string): boolean => {
-  const days = getDaysRemaining(expiresAt)
+const isExpiringSoon = (expiresAt: string, isPermanent?: boolean): boolean => {
+  const days = getDaysRemaining(expiresAt, isPermanent)
   return days !== null && days <= 7
 }
 

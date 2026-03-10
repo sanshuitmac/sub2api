@@ -59,6 +59,10 @@ func (APIKey) Fields() []ent.Field {
 			Comment("Blocked IPs/CIDRs"),
 
 		// ========== Quota fields ==========
+		// Key-level concurrency limit (independent from user concurrency)
+		field.Int("concurrency").
+			Default(1).
+			Comment("Concurrency limit for this API key"),
 		// Quota limit in USD (0 = unlimited)
 		field.Float("quota").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
@@ -74,6 +78,10 @@ func (APIKey) Fields() []ent.Field {
 			Optional().
 			Nillable().
 			Comment("Expiration time for this API key (null = never expires)"),
+		// Whether expiration countdown starts on first use.
+		field.Bool("expiry_starts_on_first_use").
+			Default(false).
+			Comment("Whether expiration starts on first use"),
 
 		// ========== Rate limit fields ==========
 		// Rate limit configuration (0 = unlimited)

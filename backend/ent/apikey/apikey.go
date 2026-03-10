@@ -37,12 +37,16 @@ const (
 	FieldIPWhitelist = "ip_whitelist"
 	// FieldIPBlacklist holds the string denoting the ip_blacklist field in the database.
 	FieldIPBlacklist = "ip_blacklist"
+	// FieldConcurrency holds the string denoting the concurrency field in the database.
+	FieldConcurrency = "concurrency"
 	// FieldQuota holds the string denoting the quota field in the database.
 	FieldQuota = "quota"
 	// FieldQuotaUsed holds the string denoting the quota_used field in the database.
 	FieldQuotaUsed = "quota_used"
 	// FieldExpiresAt holds the string denoting the expires_at field in the database.
 	FieldExpiresAt = "expires_at"
+	// FieldExpiryStartsOnFirstUse holds the string denoting the expiry_starts_on_first_use field in the database.
+	FieldExpiryStartsOnFirstUse = "expiry_starts_on_first_use"
 	// FieldRateLimit5h holds the string denoting the rate_limit_5h field in the database.
 	FieldRateLimit5h = "rate_limit_5h"
 	// FieldRateLimit1d holds the string denoting the rate_limit_1d field in the database.
@@ -106,9 +110,11 @@ var Columns = []string{
 	FieldLastUsedAt,
 	FieldIPWhitelist,
 	FieldIPBlacklist,
+	FieldConcurrency,
 	FieldQuota,
 	FieldQuotaUsed,
 	FieldExpiresAt,
+	FieldExpiryStartsOnFirstUse,
 	FieldRateLimit5h,
 	FieldRateLimit1d,
 	FieldRateLimit7d,
@@ -152,10 +158,14 @@ var (
 	DefaultStatus string
 	// StatusValidator is a validator for the "status" field. It is called by the builders before save.
 	StatusValidator func(string) error
+	// DefaultConcurrency holds the default value on creation for the "concurrency" field.
+	DefaultConcurrency int
 	// DefaultQuota holds the default value on creation for the "quota" field.
 	DefaultQuota float64
 	// DefaultQuotaUsed holds the default value on creation for the "quota_used" field.
 	DefaultQuotaUsed float64
+	// DefaultExpiryStartsOnFirstUse holds the default value on creation for the "expiry_starts_on_first_use" field.
+	DefaultExpiryStartsOnFirstUse bool
 	// DefaultRateLimit5h holds the default value on creation for the "rate_limit_5h" field.
 	DefaultRateLimit5h float64
 	// DefaultRateLimit1d holds the default value on creation for the "rate_limit_1d" field.
@@ -223,6 +233,11 @@ func ByLastUsedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastUsedAt, opts...).ToFunc()
 }
 
+// ByConcurrency orders the results by the concurrency field.
+func ByConcurrency(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldConcurrency, opts...).ToFunc()
+}
+
 // ByQuota orders the results by the quota field.
 func ByQuota(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldQuota, opts...).ToFunc()
@@ -236,6 +251,11 @@ func ByQuotaUsed(opts ...sql.OrderTermOption) OrderOption {
 // ByExpiresAt orders the results by the expires_at field.
 func ByExpiresAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldExpiresAt, opts...).ToFunc()
+}
+
+// ByExpiryStartsOnFirstUse orders the results by the expiry_starts_on_first_use field.
+func ByExpiryStartsOnFirstUse(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldExpiryStartsOnFirstUse, opts...).ToFunc()
 }
 
 // ByRateLimit5h orders the results by the rate_limit_5h field.

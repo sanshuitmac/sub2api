@@ -26,6 +26,7 @@ var (
 	ErrAPIKeyInvalidChars = infraerrors.BadRequest("API_KEY_INVALID_CHARS", "api key can only contain letters, numbers, underscores, and hyphens")
 	ErrAPIKeyRateLimited  = infraerrors.TooManyRequests("API_KEY_RATE_LIMITED", "too many failed attempts, please try again later")
 	ErrInvalidIPPattern   = infraerrors.BadRequest("INVALID_IP_PATTERN", "invalid IP or CIDR pattern")
+	ErrInvalidKeyConcurrency = infraerrors.BadRequest("INVALID_KEY_CONCURRENCY", "api key concurrency must be greater than 0")
 	// ErrAPIKeyExpired        = infraerrors.Forbidden("API_KEY_EXPIRED", "api key has expired")
 	ErrAPIKeyExpired = infraerrors.Forbidden("API_KEY_EXPIRED", "api key 已过期")
 	// ErrAPIKeyQuotaExhausted = infraerrors.TooManyRequests("API_KEY_QUOTA_EXHAUSTED", "api key quota exhausted")
@@ -54,6 +55,7 @@ type APIKeyRepository interface {
 	GetByKeyForAuth(ctx context.Context, key string) (*APIKey, error)
 	Update(ctx context.Context, key *APIKey) error
 	Delete(ctx context.Context, id int64) error
+	ActivateExpiryOnFirstUse(ctx context.Context, id int64, newExpiresAt, usedAt time.Time) (bool, error)
 
 	ListByUserID(ctx context.Context, userID int64, params pagination.PaginationParams, filters APIKeyListFilters) ([]APIKey, *pagination.PaginationResult, error)
 	VerifyOwnership(ctx context.Context, userID int64, apiKeyIDs []int64) ([]int64, error)
@@ -142,10 +144,14 @@ type CreateAPIKeyRequest struct {
 	CustomKey   *string  `json:"custom_key"`   // 可选的自定义key
 	IPWhitelist []string `json:"ip_whitelist"` // IP 白名单
 	IPBlacklist []string `json:"ip_blacklist"` // IP 黑名单
+	// Concurrency for this key (nil means fallback to current user's concurrency)
+	Concurrency *int `json:"concurrency"`
 
 	// Quota fields
 	Quota         float64 `json:"quota"`           // Quota limit in USD (0 = unlimited)
 	ExpiresInDays *int    `json:"expires_in_days"` // Days until expiry (nil = never expires)
+	// Whether the expiration countdown starts when this key is first used.
+	ExpiryStartsOnFirstUse bool `json:"expiry_starts_on_first_use"`
 
 	// Rate limit fields (0 = unlimited)
 	RateLimit5h float64 `json:"rate_limit_5h"`
@@ -160,12 +166,15 @@ type UpdateAPIKeyRequest struct {
 	Status      *string  `json:"status"`
 	IPWhitelist []string `json:"ip_whitelist"` // IP 白名单（空数组清空）
 	IPBlacklist []string `json:"ip_blacklist"` // IP 黑名单（空数组清空）
+	Concurrency *int     `json:"concurrency"` // Key-level concurrency (nil = no change)
 
 	// Quota fields
 	Quota           *float64   `json:"quota"`       // Quota limit in USD (nil = no change, 0 = unlimited)
 	ExpiresAt       *time.Time `json:"expires_at"`  // Expiration time (nil = no change)
 	ClearExpiration bool       `json:"-"`           // Clear expiration (internal use)
 	ResetQuota      *bool      `json:"reset_quota"` // Reset quota_used to 0
+	// Whether expiration countdown starts when this key is first used.
+	ExpiryStartsOnFirstUse *bool `json:"expiry_starts_on_first_use"`
 
 	// Rate limit fields (nil = no change, 0 = unlimited)
 	RateLimit5h         *float64 `json:"rate_limit_5h"`
@@ -348,6 +357,17 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 		}
 	}
 
+	keyConcurrency := user.Concurrency
+	if keyConcurrency <= 0 {
+		keyConcurrency = 1
+	}
+	if req.Concurrency != nil {
+		if *req.Concurrency <= 0 {
+			return nil, ErrInvalidKeyConcurrency
+		}
+		keyConcurrency = *req.Concurrency
+	}
+
 	var key string
 
 	// 判断是否使用自定义Key
@@ -392,11 +412,13 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 		Status:      StatusActive,
 		IPWhitelist: req.IPWhitelist,
 		IPBlacklist: req.IPBlacklist,
+		Concurrency: keyConcurrency,
 		Quota:       req.Quota,
 		QuotaUsed:   0,
 		RateLimit5h: req.RateLimit5h,
 		RateLimit1d: req.RateLimit1d,
 		RateLimit7d: req.RateLimit7d,
+		ExpiryStartsOnFirstUse: req.ExpiryStartsOnFirstUse,
 	}
 
 	// Set expiration time if specified
@@ -555,6 +577,12 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 			_ = s.cache.DeleteCreateAttemptCount(ctx, apiKey.UserID)
 		}
 	}
+	if req.Concurrency != nil {
+		if *req.Concurrency <= 0 {
+			return nil, ErrInvalidKeyConcurrency
+		}
+		apiKey.Concurrency = *req.Concurrency
+	}
 
 	// Update quota fields
 	if req.Quota != nil {
@@ -583,6 +611,9 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 		if apiKey.Status == StatusAPIKeyExpired && time.Now().Before(*req.ExpiresAt) {
 			apiKey.Status = StatusActive
 		}
+	}
+	if req.ExpiryStartsOnFirstUse != nil {
+		apiKey.ExpiryStartsOnFirstUse = *req.ExpiryStartsOnFirstUse
 	}
 
 	// 更新 IP 限制（空数组会清空设置）
@@ -675,6 +706,58 @@ func (s *APIKeyService) ValidateKey(ctx context.Context, key string) (*APIKey, *
 	}
 
 	return apiKey, user, nil
+}
+
+// ActivateExpiryOnFirstUse 将 API Key 的有效期锚点从“创建时”平移到“首次使用时”。
+// 语义：
+// - 仅当 key 设置了过期时间且尚未使用（last_used_at 为空）时生效
+// - 有效时长保持不变（expires_at - created_at）
+// - 使用 CAS 更新（last_used_at IS NULL）避免并发首次请求重复覆盖
+func (s *APIKeyService) ActivateExpiryOnFirstUse(ctx context.Context, apiKey *APIKey) error {
+	if apiKey == nil || apiKey.ExpiresAt == nil || !apiKey.ExpiryStartsOnFirstUse || apiKey.LastUsedAt != nil {
+		return nil
+	}
+	if apiKey.CreatedAt.IsZero() {
+		// 兼容旧缓存快照：若缺少 created_at，回源一次，避免首次使用无法激活有效期。
+		refreshed, err := s.apiKeyRepo.GetByID(ctx, apiKey.ID)
+		if err != nil {
+			return fmt.Errorf("load api key for first-use activation: %w", err)
+		}
+		if refreshed == nil || refreshed.ExpiresAt == nil || refreshed.LastUsedAt != nil || refreshed.CreatedAt.IsZero() {
+			return nil
+		}
+		apiKey.CreatedAt = refreshed.CreatedAt
+		apiKey.ExpiresAt = refreshed.ExpiresAt
+		apiKey.LastUsedAt = refreshed.LastUsedAt
+	}
+
+	validity := apiKey.ExpiresAt.Sub(apiKey.CreatedAt)
+	if validity <= 0 {
+		return nil
+	}
+
+	now := time.Now()
+	newExpiresAt := now.Add(validity)
+	activated, err := s.apiKeyRepo.ActivateExpiryOnFirstUse(ctx, apiKey.ID, newExpiresAt, now)
+	if err != nil {
+		return fmt.Errorf("activate api key expiry on first use: %w", err)
+	}
+
+	if activated {
+		// 保证当前请求链路立即生效，并让后续请求回源读取新快照。
+		apiKey.LastUsedAt = &now
+		apiKey.ExpiresAt = &newExpiresAt
+		s.InvalidateAuthCacheByKey(ctx, apiKey.Key)
+		return nil
+	}
+
+	// 并发场景下可能已被其它请求激活；尽力刷新本地对象，避免当前请求误判过期。
+	refreshed, getErr := s.apiKeyRepo.GetByID(ctx, apiKey.ID)
+	if getErr == nil && refreshed != nil {
+		apiKey.LastUsedAt = refreshed.LastUsedAt
+		apiKey.ExpiresAt = refreshed.ExpiresAt
+	}
+	return nil
 }
 
 // TouchLastUsed 通过防抖更新 api_keys.last_used_at，减少高频写放大。

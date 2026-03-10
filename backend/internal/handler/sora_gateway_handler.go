@@ -173,9 +173,10 @@ func (h *SoraGatewayHandler) ChatCompletions(c *gin.Context) {
 
 	streamStarted := false
 	subscription, _ := middleware2.GetSubscriptionFromContext(c)
+	keyConcurrency := apiKey.EffectiveConcurrency()
 
-	maxWait := service.CalculateMaxWait(subject.Concurrency)
-	canWait, err := h.concurrencyHelper.IncrementWaitCount(c.Request.Context(), subject.UserID, maxWait)
+	maxWait := service.CalculateMaxWait(keyConcurrency)
+	canWait, err := h.concurrencyHelper.IncrementWaitCount(c.Request.Context(), apiKey.ID, maxWait)
 	waitCounted := false
 	if err != nil {
 		reqLog.Warn("sora.user_wait_counter_increment_failed", zap.Error(err))
@@ -189,18 +190,18 @@ func (h *SoraGatewayHandler) ChatCompletions(c *gin.Context) {
 	}
 	defer func() {
 		if waitCounted {
-			h.concurrencyHelper.DecrementWaitCount(c.Request.Context(), subject.UserID)
+			h.concurrencyHelper.DecrementWaitCount(c.Request.Context(), apiKey.ID)
 		}
 	}()
 
-	userReleaseFunc, err := h.concurrencyHelper.AcquireUserSlotWithWait(c, subject.UserID, subject.Concurrency, clientStream, &streamStarted)
+	userReleaseFunc, err := h.concurrencyHelper.AcquireUserSlotWithWait(c, apiKey.ID, keyConcurrency, clientStream, &streamStarted)
 	if err != nil {
 		reqLog.Warn("sora.user_slot_acquire_failed", zap.Error(err))
 		h.handleConcurrencyError(c, err, "user", streamStarted)
 		return
 	}
 	if waitCounted {
-		h.concurrencyHelper.DecrementWaitCount(c.Request.Context(), subject.UserID)
+		h.concurrencyHelper.DecrementWaitCount(c.Request.Context(), apiKey.ID)
 		waitCounted = false
 	}
 	userReleaseFunc = wrapReleaseOnDone(c.Request.Context(), userReleaseFunc)

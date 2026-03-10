@@ -95,6 +95,9 @@ func (f fakeAPIKeyRepo) UpdateLastUsed(ctx context.Context, id int64, usedAt tim
 	}
 	return nil
 }
+func (f fakeAPIKeyRepo) ActivateExpiryOnFirstUse(ctx context.Context, id int64, newExpiresAt, usedAt time.Time) (bool, error) {
+	return true, nil
+}
 func (f fakeAPIKeyRepo) IncrementRateLimitUsage(ctx context.Context, id int64, cost float64) error {
 	return nil
 }

@@ -39,6 +39,10 @@ func (s *UserSubscription) IsExpired() bool {
 	return time.Now().After(s.ExpiresAt)
 }
 
+func (s *UserSubscription) IsPermanent() bool {
+	return !s.ExpiresAt.IsZero() && !s.ExpiresAt.Before(MaxExpiresAt)
+}
+
 func (s *UserSubscription) DaysRemaining() int {
 	if s.IsExpired() {
 		return 0

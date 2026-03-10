@@ -329,7 +329,7 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 
 	case RedeemTypeSubscription:
 		validityDays := redeemCode.ValidityDays
-		if validityDays <= 0 {
+		if validityDays != PermanentValidityDays && validityDays <= 0 {
 			validityDays = 30
 		}
 		_, _, err := s.subscriptionService.AssignOrExtendSubscription(txCtx, &AssignSubscriptionInput{

@@ -642,6 +642,8 @@ export default {
       geminiCliDesc: '导入为 Gemini CLI 配置'
     },
     // 配额和有效期
+    concurrencyLimit: '密钥并发限制',
+    concurrencyLimitHint: '该密钥可同时处理的最大请求数（至少 1）。',
     quotaLimit: '额度限制',
     quotaAmount: '额度金额 (USD)',
     quotaAmountPlaceholder: '输入 USD 额度限制',
@@ -671,6 +673,10 @@ export default {
     expiresInDays: '{days} 天',
     extendDays: '+{days} 天',
     customDate: '自定义',
+    expiryStartsOnFirstUse: '首次使用后开始计时',
+    expiryStartsOnFirstUseHint: '启用后，到期时间从该密钥第一次调用开始计算。',
+    expiresAfterFirstUse: '首次使用后 {days} 天到期',
+    firstUseExpiryPending: '首次使用后开始计时',
     expirationDate: '过期时间',
     expirationDateHint: '选择此 API 密钥的过期时间。',
     currentExpiration: '当前过期时间',
@@ -1621,6 +1627,8 @@ export default {
       daysRemaining: '天剩余',
       remainingDays: '剩余天数',
       noExpiration: '无过期时间',
+      permanent: '永久',
+      permanentValidity: '设为永久有效',
       status: {
         active: '生效中',
         expired: '已过期',
@@ -1666,7 +1674,7 @@ export default {
       adjustOutOfRange: '调整天数必须在 -36500 到 36500 之间',
       pleaseSelectUser: '请选择用户',
       pleaseSelectGroup: '请选择分组',
-      validityDaysRequired: '请输入有效的天数（至少1天）',
+      validityDaysRequired: '请输入有效天数（至少1天），或启用“永久有效”',
       revokeConfirm: "确定要撤销 '{user}' 的订阅吗？此操作无法撤销。"
     },
 

@@ -100,6 +100,11 @@ func LastUsedAt(v time.Time) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldLastUsedAt, v))
 }
 
+// Concurrency applies equality check predicate on the "concurrency" field. It's identical to ConcurrencyEQ.
+func Concurrency(v int) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldConcurrency, v))
+}
+
 // Quota applies equality check predicate on the "quota" field. It's identical to QuotaEQ.
 func Quota(v float64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldQuota, v))
@@ -113,6 +118,11 @@ func QuotaUsed(v float64) predicate.APIKey {
 // ExpiresAt applies equality check predicate on the "expires_at" field. It's identical to ExpiresAtEQ.
 func ExpiresAt(v time.Time) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldExpiresAt, v))
+}
+
+// ExpiryStartsOnFirstUse applies equality check predicate on the "expiry_starts_on_first_use" field. It's identical to ExpiryStartsOnFirstUseEQ.
+func ExpiryStartsOnFirstUse(v bool) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldExpiryStartsOnFirstUse, v))
 }
 
 // RateLimit5h applies equality check predicate on the "rate_limit_5h" field. It's identical to RateLimit5hEQ.
@@ -605,6 +615,46 @@ func IPBlacklistNotNil() predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotNull(FieldIPBlacklist))
 }
 
+// ConcurrencyEQ applies the EQ predicate on the "concurrency" field.
+func ConcurrencyEQ(v int) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldConcurrency, v))
+}
+
+// ConcurrencyNEQ applies the NEQ predicate on the "concurrency" field.
+func ConcurrencyNEQ(v int) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNEQ(FieldConcurrency, v))
+}
+
+// ConcurrencyIn applies the In predicate on the "concurrency" field.
+func ConcurrencyIn(vs ...int) predicate.APIKey {
+	return predicate.APIKey(sql.FieldIn(FieldConcurrency, vs...))
+}
+
+// ConcurrencyNotIn applies the NotIn predicate on the "concurrency" field.
+func ConcurrencyNotIn(vs ...int) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotIn(FieldConcurrency, vs...))
+}
+
+// ConcurrencyGT applies the GT predicate on the "concurrency" field.
+func ConcurrencyGT(v int) predicate.APIKey {
+	return predicate.APIKey(sql.FieldGT(FieldConcurrency, v))
+}
+
+// ConcurrencyGTE applies the GTE predicate on the "concurrency" field.
+func ConcurrencyGTE(v int) predicate.APIKey {
+	return predicate.APIKey(sql.FieldGTE(FieldConcurrency, v))
+}
+
+// ConcurrencyLT applies the LT predicate on the "concurrency" field.
+func ConcurrencyLT(v int) predicate.APIKey {
+	return predicate.APIKey(sql.FieldLT(FieldConcurrency, v))
+}
+
+// ConcurrencyLTE applies the LTE predicate on the "concurrency" field.
+func ConcurrencyLTE(v int) predicate.APIKey {
+	return predicate.APIKey(sql.FieldLTE(FieldConcurrency, v))
+}
+
 // QuotaEQ applies the EQ predicate on the "quota" field.
 func QuotaEQ(v float64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldQuota, v))
@@ -733,6 +783,16 @@ func ExpiresAtIsNil() predicate.APIKey {
 // ExpiresAtNotNil applies the NotNil predicate on the "expires_at" field.
 func ExpiresAtNotNil() predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotNull(FieldExpiresAt))
+}
+
+// ExpiryStartsOnFirstUseEQ applies the EQ predicate on the "expiry_starts_on_first_use" field.
+func ExpiryStartsOnFirstUseEQ(v bool) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldExpiryStartsOnFirstUse, v))
+}
+
+// ExpiryStartsOnFirstUseNEQ applies the NEQ predicate on the "expiry_starts_on_first_use" field.
+func ExpiryStartsOnFirstUseNEQ(v bool) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNEQ(FieldExpiryStartsOnFirstUse, v))
 }
 
 // RateLimit5hEQ applies the EQ predicate on the "rate_limit_5h" field.
